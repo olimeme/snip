@@ -22,8 +22,15 @@ func main() {
 	fileServer := http.FileServer(http.Dir("./ui/static/"))
 	mux.Handle("/static/", http.StripPrefix("/static", fileServer))
 
-	infoLog.Printf("Starting server on %s", *addr)
-	err := http.ListenAndServe(*addr, mux)
+	srv := &http.Server{
+		Addr:     *addr,
+		ErrorLog: errorLog,
+		Handler:  mux,
+	}
 
+	infoLog.Printf("Starting server on %s", *addr)
+	err := srv.ListenAndServe()
+
+	//avoid using Fatal() or Panic() outside of main func
 	errorLog.Fatal(err)
 }
