@@ -2,18 +2,18 @@ package main
 
 import (
 	"html/template"
-	"net/url"
 	"path/filepath"
 	"time"
 
+	"olimeme.net/snippetbox/pkg/forms"
 	"olimeme.net/snippetbox/pkg/models"
 )
 
 // Add FormData and FormErrors fields to the templateData struct.
 type templateData struct {
 	CurrentYear int
-	FormData    url.Values
-	FormErrors  map[string]string
+	Flash       string
+	Form        *forms.Form
 	Snippet     *models.Snippet
 	Snippets    []*models.Snippet
 }
