@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"html/template"
@@ -23,11 +24,8 @@ type application struct {
 }
 
 func main() {
-	addr := flag.String("addr", ":4000", "HTTP network address")
 	dsn := flag.String("dsn", "web:pass@/snippetbox?parseTime=true", "MySQL dataabase")
-	// Define a new command-line flag for the session secret (a random key whic
-	// will be used to encrypt and authenticate session cookies). It should be
-	// bytes long.
+	addr := flag.String("addr", ":4000", "HTTP network address")
 	secret := flag.String("secret", "s6Ndh+pPbnzHbS*+9Pk8qGWhTzbpa@ge", "Secret key")
 	flag.Parse()
 
@@ -41,11 +39,16 @@ func main() {
 	defer db.Close()
 
 	templateCache, err := newTemplateCache("./ui/html/")
+	if err != nil {
+		errorLog.Fatal(err)
+	}
 	// Use the sessions.New() function to initialize a new session manager,
 	// passing in the secret key as the parameter. Then we configure it so
 	// sessions always expires after 12 hours.
 	session := sessions.New([]byte(*secret))
 	session.Lifetime = 12 * time.Hour
+	// session.Secure = true
+
 	// And add the session manager to our application dependencies.
 	app := &application{
 		errorLog:      errorLog,
@@ -55,14 +58,24 @@ func main() {
 		templateCache: templateCache,
 	}
 
+	tlsConfig := &tls.Config{
+		PreferServerCipherSuites: true,
+		CurvePreferences:         []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
+
 	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:         *addr,
+		ErrorLog:     errorLog,
+		Handler:      app.routes(),
+		TLSConfig:    tlsConfig,
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	infoLog.Printf("Starting server on %s", *addr)
 	err = srv.ListenAndServe()
+	// err = srv.ListenAndServeTLS("../tls/cert.pem", "../tls/key.pem")
 	//avoid using Fatal() or Panic() outside of main func
 	errorLog.Fatal(err)
 }
